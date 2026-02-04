@@ -5,7 +5,7 @@ starlings = VideoIO.load("starlings.mp4")
 rough_alg = AdaptiveThreshold(window_size = 4; percentage = 1)
 fine_alg = AdaptiveThreshold(window_size = 250; percentage = 0.01)
 
-raw_img = starlings[350]
+raw_img = starlings[328]
 first_blur = imfilter(raw_img, Kernel.gaussian(1))
 img = binarize(first_blur, rough_alg)
 second_blur = imfilter(img, Kernel.gaussian(12))

@@ -44,9 +44,97 @@ function phase_matching(signal, reference_signal, threshold)
     return aligned_signal
 end
 
-##
+function fill_bald_spots!(signal, padding)
 
-phase_matching(scaled_audio[2], scaled_audio[1], 50);
+    out_signal = Float64[]
+    jump_idx = findall(s -> abs(s) > 0.01, diff(signal))
+
+    # Fully circular signal, no jumps
+    if abs(signal[end] - signal[1]) < 0.01 && isempty(jump_idx)
+        return signal
+
+    # Signal is not circular
+    elseif isempty(jump_idx)
+
+        # Cut the data in half
+        cut_location = floor(Int, length(signal)/2)
+        cut_data = vcat(signal[cut_location+1:end], signal[1:cut_location])
+
+        # Cubic interpolation
+        x = 1:length(cut_data)
+        itp_cubic = cubic_spline_interpolation(x, cut_data)
+
+        # Fake an increased density in between the points of interest
+        x_new = vcat(1:cut_location, range(cut_location, cut_location+1, padding)[2:end-1], (cut_location+1):length(cut_data))
+
+        for x_val in x_new
+            push!(out_signal, itp_cubic(x_val))
+        end
+
+
+    # Data jumps somehwere
+    else
+        # Cubic interpolation
+        x = 1:length(signal)
+        itp_cubic = cubic_spline_interpolation(x, signal)
+
+        # Fake an increased density in between the points of interest
+        x_new = vcat(1:jump_idx[1], range(jump_idx[1], jump_idx[1]+1, padding)[2:end-1], (jump_idx[1]+1):length(signal))
+
+        for x_val in x_new
+            push!(out_signal, itp_cubic(x_val))
+        end
+
+    end
+
+    return out_signal
+    
+end
+
+function complete_link(signal, padding)
+
+    if abs(signal[end] - signal[1]) > 0.01
+
+        final_audio = Float64[]
+
+        # Cut the data in half
+        cut_location = floor(Int, length(signal)/2)
+        cut_data = vcat(signal[cut_location+1:end], signal[1:cut_location])
+
+        # Cubic interpolation
+        x = 1:length(cut_data)
+        itp_cubic = cubic_spline_interpolation(x, cut_data)
+
+        # Fake an increased density in between the points of interest
+        x_new = vcat(1:cut_location+1, range(cut_location+1, cut_location+2, padding)[2:end-1], (cut_location+2):length(cut_data))
+
+        for x_val in x_new
+            push!(final_audio, itp_cubic(x_val))
+        end
+
+        return final_audio
+    else
+        return signal
+    end
+
+end
+
+function moving_average(A::AbstractArray, m::Int)
+    out = similar(A)
+    R = CartesianIndices(A)
+    Ifirst, Ilast = first(R), last(R)
+    I1 = m÷2 * oneunit(Ifirst)
+    for I in R
+        n, s = 0, zero(eltype(out))
+        for J in max(Ifirst, I-I1):min(Ilast, I+I1)
+            s += A[J]
+            n += 1
+        end
+        out[I] = s/n
+    end
+    return out
+end
+
 
 ##
 global const bpm = Ref{Float64}(120.0)
@@ -92,13 +180,10 @@ for (i, raw_img) in enumerate(clipped_starlings)
     global_idx = findmax(ys)[2]
     phase_aligned_audio = vcat(audio_signal[global_idx:end], audio_signal[1:global_idx-1])
 
-    # Fill in bald spots
-
     push!(all_audio, phase_aligned_audio)
 end
 
 ## Process audio signal
-
 
 # Scale the audio for volume
 final_audio = Float64[]
@@ -107,18 +192,36 @@ scaled_audio = [sign.(signal) .* (abs.(signal) ./ largest_amplitude).^(1.0) for 
 
 
 # Phase align properly
-aligned_signal = copy(scaled_audio[1])
+aligned_audio = Vector{Float64}[]
+push!(aligned_audio, scaled_audio[1])
 for (i, signal) in enumerate(scaled_audio[2:end])
-    scaled_audio[i+1] = copy(aligned_signal)
-    aligned_signal = phase_matching(signal, aligned_signal, 100)
+    aligned_signal = phase_matching(signal, aligned_audio[i], 200)
+    push!(aligned_audio, aligned_signal)
 end
+
+# Fill in any remaining bald spots
+smooth_data = Vector{Float64}[]
+for signal in aligned_audio
+    filled_signal = fill_bald_spots!(signal, 200)
+    push!(smooth_data, filled_signal)
+end
+
+
+# aligned_audio = Vector{Float64}[]
+# push!(aligned_audio, moving_average(scaled_audio[1], 100))
+# for (i, signal) in enumerate(scaled_audio[2:end])
+#     circular_signal = moving_average(signal, 100)
+#     aligned_signal = phase_matching(circular_signal, aligned_audio[i], 200)
+#     push!(aligned_audio, aligned_signal)
+# end
+
 
 
 # Interpolate to fixed length
 fps = 30.0
 samples_per_frame = floor(Int, fs[] / fps)
 
-for signal in scaled_audio
+for signal in smooth_data
 
     x = range(1, samples_per_frame, length(signal))
     y = signal
@@ -134,18 +237,15 @@ for signal in scaled_audio
 end
 
 
-
-
 ## Test plotting
-
 fig = Figure()
 ax = Axis(fig[1, 1])
 
-plot_values = [330, 350]
+plot_values = [309, 561]
 
 for i in plot_values
-    lines!(ax, 1:length(scaled_audio[i]), scaled_audio[i], color = :red)
-    # plot!(ax,  phase_matching(scaled_audio[i], scaled_audio[i-1]))
+    # lines!(ax, 1:length(aligned_audio[i]), aligned_audio[i], color = :red)
+    lines!(ax, 1:length(smooth_data[i]), smooth_data[i], color = :blue)
 end
 # lines!(ax, 1:length(scaled_audio[23]), scaled_audio[23], color = :black)
 # lines!(ax, 1:length(scaled_audio[24]), scaled_audio[24], color = :green)
