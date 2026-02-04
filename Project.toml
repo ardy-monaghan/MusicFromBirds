@@ -1,0 +1,10 @@
+name = "FlockingAnalysis"
+uuid = "06962e27-4ff1-49f9-874f-af87d05cc986"
+authors = ["ardy-monaghan <ross.monaghan99@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+
+[compat]
+Revise = "3.13.2"
