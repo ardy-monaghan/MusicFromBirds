@@ -24,6 +24,29 @@ function flock_deviations(xs, ys)
     return deviations
 end
 
+function phase_matching(signal, reference_signal, threshold)
+
+
+    function error_at_offset(signal, reference_signal, offset, idx)
+        shifted_signal = vcat(signal[idx:end], signal[1:idx-1])
+
+        return sum(abs.(shifted_signal[1:offset] .- reference_signal[1:offset]))
+    end
+
+
+    # Find the minimum error offset
+    lag = findmin( i -> error_at_offset(signal, reference_signal, threshold, i),  1:(length(signal)-threshold))[2]
+
+    aligned_signal = vcat(signal[lag:end], signal[1:lag-1])
+
+    aligned_signal .+= (reference_signal[1] .- aligned_signal[1])    
+
+    return aligned_signal
+end
+
+##
+
+phase_matching(scaled_audio[2], scaled_audio[1], 50);
 
 ##
 global const bpm = Ref{Float64}(120.0)
@@ -65,17 +88,30 @@ for (i, raw_img) in enumerate(clipped_starlings)
 
     audio_signal = flock_deviations(xs, ys)
 
-    push!(all_audio, audio_signal)
+    # Do a course phase alignment 
+    global_idx = findmax(ys)[2]
+    phase_aligned_audio = vcat(audio_signal[global_idx:end], audio_signal[1:global_idx-1])
+
+    # Fill in bald spots
+
+    push!(all_audio, phase_aligned_audio)
 end
 
 ## Process audio signal
 
-# Phase alignment
 
 # Scale the audio for volume
 final_audio = Float64[]
 largest_amplitude = maximum(signal -> maximum(abs.(signal)), all_audio)
-scaled_audio = [signal ./ largest_amplitude for signal in all_audio]
+scaled_audio = [sign.(signal) .* (abs.(signal) ./ largest_amplitude).^(1.0) for signal in all_audio]
+
+
+# Phase align properly
+aligned_signal = copy(scaled_audio[1])
+for (i, signal) in enumerate(scaled_audio[2:end])
+    scaled_audio[i+1] = copy(aligned_signal)
+    aligned_signal = phase_matching(signal, aligned_signal, 100)
+end
 
 
 # Interpolate to fixed length
@@ -97,18 +133,27 @@ for signal in scaled_audio
     
 end
 
+
+
+
 ## Test plotting
 
 fig = Figure()
 ax = Axis(fig[1, 1])
 
-lines!(ax, 1:length(scaled_audio[1]), scaled_audio[1], color = :blue)
-lines!(ax, 1:length(scaled_audio[2]), scaled_audio[2], color = :blue)
-lines!(ax, 1:length(scaled_audio[3]), scaled_audio[3], color = :blue)
+plot_values = [330, 350]
 
+for i in plot_values
+    lines!(ax, 1:length(scaled_audio[i]), scaled_audio[i], color = :red)
+    # plot!(ax,  phase_matching(scaled_audio[i], scaled_audio[i-1]))
+end
+# lines!(ax, 1:length(scaled_audio[23]), scaled_audio[23], color = :black)
+# lines!(ax, 1:length(scaled_audio[24]), scaled_audio[24], color = :green)
+# lines!(ax, 1:length(scaled_audio[24]), phase_matching(scaled_audio[24], scaled_audio[23], 50), color = :red)
 display(fig)
 
 ##
+
 running = Ref(true)
 stream = PortAudioStream(0, 1; samplerate=fs[])
 
@@ -118,12 +163,14 @@ stream = PortAudioStream(0, 1; samplerate=fs[])
         tᵢ = 0
         buf = zeros(Float32, spf[])
 
-        while running[]
+        write(stream, final_audio)
 
-            write(stream, final_audio[tᵢ*spf[] .+ 1 : (tᵢ+1)*spf[]])
-            tᵢ += 1
+        # while running[]
 
-        end
+        #     write(stream, final_audio[tᵢ*spf[] .+ 1 : (tᵢ+1)*spf[]])
+        #     tᵢ += 1
+
+        # end
 
     catch e
         @error "Audio task crashed" exception=(e, catch_backtrace())
