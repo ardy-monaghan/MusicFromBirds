@@ -1,4 +1,4 @@
-using FlockingAnalysis, VideoIO, ImageBinarization, Contour, CairoMakie, ImageFiltering, Statistics, PortAudio, Interpolations, Statistics, WAV
+using FlockingAnalysis, VideoIO, ImageBinarization, Contour, CairoMakie, ImageFiltering, Statistics, Interpolations, Statistics, WAV
 
 function phase_matching(signal, reference_signal, threshold)
 
@@ -8,7 +8,6 @@ function phase_matching(signal, reference_signal, threshold)
 
         return sum(abs.(shifted_signal[1:offset] .- reference_signal[1:offset]))
     end
-
 
     # Find the minimum error offset
     lag = findmin( i -> error_at_offset(signal, reference_signal, threshold, i),  1:(length(signal)-threshold))[2]
@@ -85,8 +84,6 @@ end
 
 
 ##
-global const bpm = Ref{Float64}(120.0)
-global const spf = Ref{Int64}(256) 
 global const fs = Ref{Int64}(44100)
 
 ##
@@ -147,17 +144,6 @@ for signal in aligned_audio
     push!(smooth_data, filled_signal)
 end
 
-
-# aligned_audio = Vector{Float64}[]
-# push!(aligned_audio, moving_average(scaled_audio[1], 100))
-# for (i, signal) in enumerate(scaled_audio[2:end])
-#     circular_signal = moving_average(signal, 100)
-#     aligned_signal = phase_matching(circular_signal, aligned_audio[i], 200)
-#     push!(aligned_audio, aligned_signal)
-# end
-
-
-
 # Interpolate to fixed length
 fps = 30.0
 samples_per_frame = floor(Int, fs[] / fps)
@@ -166,7 +152,6 @@ base_multiplier = 2.0
 
 for signal in smooth_data
 
-    # x = range(1, samples_per_frame, length(signal))
     x = 1:length(signal)
     y = signal
 
@@ -183,55 +168,7 @@ for signal in smooth_data
         push!(final_audio, itp_cubic(x_val))
     end
 
-
 end
 
 
-## Test plotting
-fig = Figure()
-ax = Axis(fig[1, 1])
-
-plot_values = [309, 561]
-
-# for i in plot_values
-#     # lines!(ax, 1:length(aligned_audio[i]), aligned_audio[i], color = :red)
-#     lines!(ax, 1:length(smooth_data[i]), smooth_data[i], color = :blue)
-# end
-
-
-# lines!(ax, 1:length(scaled_audio[23]), scaled_audio[23], color = :black)
-# lines!(ax, 1:length(scaled_audio[24]), scaled_audio[24], color = :green)
-# lines!(ax, 1:length(scaled_audio[24]), phase_matching(scaled_audio[24], scaled_audio[23], 50), color = :red)
-display(fig)
-
-##
-
-running = Ref(true)
-stream = PortAudioStream(0, 1; samplerate=fs[])
-
-##
-@async begin
-    try
-        tᵢ = 0
-        buf = zeros(Float32, spf[])
-
-        write(stream, final_audio)
-
-        # while running[]
-
-        #     write(stream, final_audio[tᵢ*spf[] .+ 1 : (tᵢ+1)*spf[]])
-        #     tᵢ += 1
-
-        # end
-
-    catch e
-        @error "Audio task crashed" exception=(e, catch_backtrace())
-    end
-end
-
-##
-running[] = false
-close(stream)
-
-wavwrite(final_audio, "./test_audio.wav", Fs=fs[])
-# save("./test_audio.ogg", final_audio)
+wavwrite(final_audio, "./flock_audio.wav", Fs=fs[])
