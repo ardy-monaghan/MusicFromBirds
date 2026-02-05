@@ -2,7 +2,7 @@
 
 julia_version = "1.11.0"
 manifest_format = "2.0"
-project_hash = "c633c6fc1b8dbbfa410117ec397f0b3ee8af7246"
+project_hash = "6eaa9dc1ccbb45769b7c2b834f6fdd5d9a6122b3"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -1632,6 +1632,12 @@ deps = ["ColorTypes", "Dates", "Downloads", "FFMPEG", "FFMPEG_jll", "FileIO", "G
 git-tree-sha1 = "4f37de70062a474e0f4edc50d1bb6ebfacbf03c2"
 uuid = "d6d074c3-1acf-5d4c-9a43-ef38773959a2"
 version = "1.4.0"
+
+[[deps.WAV]]
+deps = ["Base64", "FileIO", "Libdl", "Logging"]
+git-tree-sha1 = "7e7e1b4686995aaf4ecaaf52f6cd824fa6bd6aa5"
+uuid = "8149f6b0-98f6-5db9-b78f-408fbbb8ef88"
+version = "1.2.0"
 
 [[deps.WebP]]
 deps = ["CEnum", "ColorTypes", "FileIO", "FixedPointNumbers", "ImageCore", "libwebp_jll"]

@@ -1,5 +1,5 @@
 module FlockingAnalysis
-using Contour
+using Contour, Statistics
 
 export flock_outline, flock_deviations
 

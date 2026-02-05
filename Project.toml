@@ -14,6 +14,7 @@ PortAudio = "80ea8bcb-4634-5cb3-8ee8-a132660d1d2d"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 VideoIO = "d6d074c3-1acf-5d4c-9a43-ef38773959a2"
+WAV = "8149f6b0-98f6-5db9-b78f-408fbbb8ef88"
 
 [compat]
 CairoMakie = "0.15.8"
@@ -26,3 +27,4 @@ PortAudio = "1.1.1"
 Revise = "3.13.2"
 Statistics = "1.11.1"
 VideoIO = "1.4.0"
+WAV = "1.2.0"

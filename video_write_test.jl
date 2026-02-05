@@ -26,11 +26,20 @@ for (i, raw_img) in enumerate(chopped_starlings)
     (xs, ys) = flock_outline(x_vec, y_vec, image_values) # coordinates of this line segment
 
     # Colour the outline
-    for x in floor.(Int, xs), y in floor.(Int, ys)
-        raw_img[x, y] = colorant"firebrick2" # Red color for the outline
+    for (x, y) in zip(floor.(Int, xs), floor.(Int, ys))
+        y_max = size(raw_img, 1)
+        raw_img[y_max - y-1, x] = colorant"firebrick2" # Red color for the outline
+        raw_img[y_max - y, x] = colorant"firebrick2" # Red color for the outline
+        raw_img[y_max - y+1, x] = colorant"firebrick2" # Red color for the outline
     end
 
     push!(final_film, copy(raw_img))
 end
+
+## Save film?
+
+encoder_options = (crf=23, preset="medium")
+VideoIO.save("video.mp4", final_film, framerate=30, encoder_options=encoder_options)
+
 
 

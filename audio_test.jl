@@ -1,28 +1,4 @@
-using VideoIO, ImageBinarization, Contour, CairoMakie, ImageFiltering, Statistics, PortAudio, Interpolations
-
-function flock_outline(x_vec, y_vec, image_values)
-    median_contour = Contour.levels(contours(x_vec,y_vec,image_values, 1))[1]
-    line_vec = Contour.lines(median_contour)
-
-    return coordinates(argmax(t -> length(t.vertices), line_vec))
-end
-
-function flock_midpoint(xs, ys)
-    return ((minimum(xs) + maximum(xs)) / 2, (minimum(ys) + maximum(ys)) / 2)
-end
-
-function distance2centre(xs, ys)
-    mx, my = flock_midpoint(xs, ys)
-    dists = sqrt.((xs .- mx).^2 .+ (ys .- my).^2)
-    return dists
-end
-
-function flock_deviations(xs, ys)
-    dists = distance2centre(xs, ys)
-    mean_dist = mean(dists)
-    deviations = dists .- mean_dist
-    return deviations
-end
+using FlockingAnalysis, VideoIO, ImageBinarization, Contour, CairoMakie, ImageFiltering, Statistics, PortAudio, Interpolations, Statistics, WAV
 
 function phase_matching(signal, reference_signal, threshold)
 
@@ -91,34 +67,6 @@ function fill_bald_spots!(signal, padding)
     
 end
 
-function complete_link(signal, padding)
-
-    if abs(signal[end] - signal[1]) > 0.01
-
-        final_audio = Float64[]
-
-        # Cut the data in half
-        cut_location = floor(Int, length(signal)/2)
-        cut_data = vcat(signal[cut_location+1:end], signal[1:cut_location])
-
-        # Cubic interpolation
-        x = 1:length(cut_data)
-        itp_cubic = cubic_spline_interpolation(x, cut_data)
-
-        # Fake an increased density in between the points of interest
-        x_new = vcat(1:cut_location+1, range(cut_location+1, cut_location+2, padding)[2:end-1], (cut_location+2):length(cut_data))
-
-        for x_val in x_new
-            push!(final_audio, itp_cubic(x_val))
-        end
-
-        return final_audio
-    else
-        return signal
-    end
-
-end
-
 function moving_average(A::AbstractArray, m::Int)
     out = similar(A)
     R = CartesianIndices(A)
@@ -164,13 +112,6 @@ for (i, raw_img) in enumerate(clipped_starlings)
     y_vec = 1:size(image_values, 2)
 
     image_values .= reverse(image_values, dims=2)
-
-    try
-        (xs, ys) = flock_outline(x_vec, y_vec, image_values) # coordinates of this line segment
-    catch e
-        @warn "Could not extract flock outline for frame $i: $e"
-        continue
-    end
 
     (xs, ys) = flock_outline(x_vec, y_vec, image_values) # coordinates of this line segment
 
@@ -291,3 +232,6 @@ end
 ##
 running[] = false
 close(stream)
+
+wavwrite(final_audio, "./test_audio.wav", Fs=fs[])
+# save("./test_audio.ogg", final_audio)
