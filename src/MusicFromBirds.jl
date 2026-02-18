@@ -1,5 +1,5 @@
 module MusicFromBirds
-using Contour, Statistics
+# using Contour, Statistics
 
 export flock_outline, flock_deviations, flock_midpoint
 
